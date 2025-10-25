@@ -1,0 +1,64 @@
+:root{
+    --bg-top:#4a90e2;
+    --bg-bottom:#2c5aa0;
+    --card-bg:#ffffff;
+    --muted:#7f8c8d;
+    --text:#2c3e50;
+    --accent:#0366d6;
+    --success-1:#27ae60;
+    --success-2:#229954;
+    --danger:#e74c3c;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(180deg,var(--bg-top) 0%,var(--bg-bottom) 100%);
+    min-height:100vh;padding:20px;color:var(--text)
+}
+.container{max-width:1400px;margin:0 auto}
+h1{color:#fff;text-align:center;margin-bottom:30px;font-size:36px;text-shadow:2px 2px 4px rgba(0,0,0,.3)}
+
+/* Layout principal */
+.main-content{display:grid;grid-template-columns:1fr 320px;gap:25px;align-items:start}
+.artefactos-section,.resultados-panel{background:var(--card-bg);border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.artefactos-section{overflow:hidden}
+.resultados-panel{position:sticky;top:20px}
+
+/* Categorías y cabeceras */
+.categories{display:flex;flex-direction:column;gap:16px}
+.categoria{border:1px solid #e9ecef;border-radius:10px;padding:10px;background:var(--card-bg)}
+.categoria-header{background:linear-gradient(135deg,var(--bg-top),var(--bg-bottom));color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-weight:700;display:flex;align-items:center;gap:10px}
+
+/* Galería: adaptativa */
+.artefactos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.artefacto-card{background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;padding:10px;text-align:center;cursor:pointer;position:relative;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.artefacto-card:hover{transform:translateY(-4px);box-shadow:0 6px 18px rgba(0,0,0,.08);border-color:var(--accent)}
+.artefacto-card.selected{background:#eaf4ff;border-color:var(--bg-bottom);border-width:2px}
+.artefacto-card img{width:100%;height:80px;object-fit:contain}
+.artefacto-nombre{font-weight:600;font-size:.95rem;color:var(--text);margin-top:8px}
+.badge{position:absolute;right:8px;top:8px;background:var(--accent);color:#fff;padding:4px 8px;border-radius:999px;font-weight:700;font-size:.85rem}
+
+/* Panel de resultados */
+.resultados-panel h2{color:var(--text);margin-bottom:16px;font-size:20px;border-bottom:3px solid var(--bg-top);padding-bottom:10px}
+.resultado-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f3f5;font-size:13px}
+.resultado-item:last-child{border-bottom:none}
+.resultado-label{color:var(--muted)}
+.resultado-valor{font-weight:700}
+.resultado-final{background:linear-gradient(135deg,var(--success-1),var(--success-2));color:#fff;padding:16px;border-radius:10px;margin-top:12px;text-align:center}
+.resultado-final-valor{font-size:34px;font-weight:800}
+
+/* Controls */
+.controls-top{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.btn{padding:8px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+.btn.secondary{background:#6c757d}
+
+/* Utilities y responsive */
+@media (max-width:1200px){.main-content{grid-template-columns:1fr}.resultados-panel{position:static}}
+@media (max-width:900px){.artefacto-card{padding:8px}.artefactos-grid{grid-template-columns:repeat(2,1fr)}.resultados-panel{width:auto}}
+
+/* pequeño estilo para inputs/buttons específicos (si se usan) */
+.cantidad-input{width:50px;padding:6px;border:2px solid #bdc3c7;border-radius:6px;text-align:center;background:#fff}
+.cantidad-input:focus{outline:none;border-color:var(--accent)}
+
+/* notas: mantuvimos apariencia cercana a la versión anterior, pero eliminamos declaraciones duplicadas y conflictos */

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Potencia — Selección por clic</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Calculadora de Potencia — seleccionar por clic</h1>
+
+        <div class="controls-top">
+            <button id="resetAll" class="btn secondary">🔄 Reiniciar</button>
+            <button id="exportSelection" class="btn">📥 Exportar a XLSX</button>
+            <div class="muted">Haz clic sobre un artefacto para aumentar su cantidad; clic derecho para disminuir.</div>
+        </div>
+
+        <!-- Preview de exportación -->
+        <div id="exportPreview" style="display:none;margin-bottom:12px;background:#fff;padding:10px;border-radius:8px;border:1px solid #e6e6e6">
+            <h3>Vista previa (hasta 20 filas)</h3>
+            <div id="previewTableContainer" style="max-height:260px;overflow:auto"></div>
+            <div style="margin-top:8px;display:flex;gap:8px">
+                <button id="confirmExport" class="btn">Generar XLSX</button>
+                <button id="cancelExport" class="btn secondary">Cancelar</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="artefactos-section">
+                <div id="categories" class="categories">
+                    <!-- categorías generadas dinámicamente -->
+                </div>
+            </div>
+
+            <div class="resultados-panel">
+                <h2>📊 Resultados del Cálculo</h2>
+                <div class="resultado-item"><span class="resultado-label">Iluminación (100%):</span> <span class="resultado-valor" id="potIluminacion">0.00 kW</span></div>
+                <div class="resultado-item"><span class="resultado-label">Carga artefactos:</span> <span class="resultado-valor" id="cargaArtefactos">0.00 kW</span></div>
+                <div class="resultado-item"><span class="resultado-label">N° de artefactos:</span> <span class="resultado-valor" id="numArtefactos">0</span></div>
+                <div class="resultado-item"><span class="resultado-label">Factor de Carga:</span> <span class="resultado-valor" id="factorSim">0%</span></div>
+                <div class="resultado-item"><span class="resultado-label">Artefactos con factor:</span> <span class="resultado-valor" id="potArtefactosFactor">0.00 kW</span></div>
+                <div class="resultado-item"><span class="resultado-label">Potencia estimada total:</span> <span class="resultado-valor" id="potenciaEstimada">0.00 kW</span></div>
+                <hr>
+                <div class="resultado-item"><span class="resultado-label">Mayor equipo:</span> <span class="resultado-valor" id="mayorEquipo">0.00 kW</span></div>
+                <div class="resultado-item"><span class="resultado-label">90% de 2 mayores:</span> <span class="resultado-valor" id="dosMayores">0.00 kW</span></div>
+                <div class="resultado-item"><span class="resultado-label">80% de 3 mayores:</span> <span class="resultado-valor" id="tresMayores">0.00 kW</span></div>
+                <div class="resultado-final">
+                    <div class="resultado-final-label">✅ POTENCIA MÍNIMA A CONTRATAR</div>
+                    <div class="resultado-final-valor" id="potenciaFinal">0.00 kW</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SheetJS for XLSX export -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script>
+        // Código optimizado: cacheo DOM, funciones reutilizables y computeStats central
+        let data = [];
+        const counts = [];
+
+        const el = {
+            categories: () => document.getElementById('categories'),
+            preview: () => document.getElementById('exportPreview'),
+            previewContainer: () => document.getElementById('previewTableContainer'),
+            btnReset: () => document.getElementById('resetAll'),
+            btnExport: () => document.getElementById('exportSelection'),
+            btnConfirm: () => document.getElementById('confirmExport'),
+            btnCancel: () => document.getElementById('cancelExport'),
+            potIluminacion: document.getElementById('potIluminacion'),
+            cargaArtefactos: document.getElementById('cargaArtefactos'),
+            numArtefactos: document.getElementById('numArtefactos'),
+            factorSim: document.getElementById('factorSim'),
+            potArtefactosFactor: document.getElementById('potArtefactosFactor'),
+            potenciaEstimada: document.getElementById('potenciaEstimada'),
+            mayorEquipo: document.getElementById('mayorEquipo'),
+            dosMayores: document.getElementById('dosMayores'),
+            tresMayores: document.getElementById('tresMayores'),
+            potenciaFinal: document.getElementById('potenciaFinal')
+        };
+
+        const round2 = v => Math.round((v || 0) * 100) / 100;
+        const factorFromCount = n => n === 0 ? 0 : n === 1 ? 1.0 : n === 2 ? 0.9 : n === 3 ? 0.8 : n === 4 ? 0.7 : 0.6;
+
+        async function loadData(){
+            try{ const res = await fetch('salida.json'); data = await res.json(); }catch(e){ alert('No se pudo cargar salida.json: '+e.message); return; }
+            data.forEach(()=>counts.push(0));
+            renderCategories();
+            recalcAndRender();
+        }
+
+        function renderCategories(){
+            const container = el.categories(); container.innerHTML = '';
+            const map = new Map();
+            data.forEach((item, idx) => { const cat = item.categoria || 'Sin categoría'; (map.get(cat)||map.set(cat,[]).get(cat)).push({...item,_idx:idx}); });
+            map.forEach((items,categoria)=>{
+                const catEl = document.createElement('div'); catEl.className='categoria';
+                const header = document.createElement('div'); header.className='categoria-header'; header.textContent = categoria; catEl.appendChild(header);
+                const grid = document.createElement('div'); grid.className='artefactos-grid';
+                items.forEach(it=>{
+                    const card = document.createElement('div'); card.className='artefacto-card'; card.dataset.index = it._idx;
+                    const img = document.createElement('img'); img.src = 'img/'+it.nombre_archivo; img.alt = it.artefacto || it.nombre_archivo; card.appendChild(img);
+                    const name = document.createElement('div'); name.className='artefacto-nombre'; name.textContent = niceName(it.artefacto||it.nombre_archivo); card.appendChild(name);
+                    const badge = document.createElement('div'); badge.className='badge'; badge.textContent='0'; card.appendChild(badge);
+                    card.addEventListener('click', ()=>{ const i=+card.dataset.index; counts[i] = (counts[i]||0)+1; badge.textContent = counts[i]; recalcAndRender(); });
+                    card.addEventListener('contextmenu', e=>{ e.preventDefault(); const i=+card.dataset.index; counts[i] = Math.max(0,(counts[i]||0)-1); badge.textContent = counts[i]; recalcAndRender(); });
+                    grid.appendChild(card);
+                });
+                catEl.appendChild(grid); container.appendChild(catEl);
+            });
+        }
+
+        function niceName(s){ return (s||'').toString().replace(/([A-Z])/g,' $1').trim(); }
+
+        function computeStats(){
+            const todos = []; let carga=0, ilum=0;
+            data.forEach((d,idx)=>{ const cant = counts[idx]||0; if(!cant) return; const pot=parseFloat(d.potencia_kw)||0; const isLamp=(d.categoria||'').toLowerCase().includes('ilumin'); if(isLamp) ilum += cant*pot; else{ for(let i=0;i<cant;i++){ todos.push(pot); carga += pot; } } });
+            todos.sort((a,b)=>b-a); const mayor = todos[0]||0; const dos = todos.length>=2 ? (todos[0]+todos[1])*0.9 : 0; const tres = todos.length>=3 ? (todos[0]+todos[1]+todos[2])*0.8 : 0; const factor = factorFromCount(todos.length); const potArtefactosFactor = round2(carga*factor); const potenciaEstimada = round2(ilum + potArtefactosFactor); const potenciaMinima = round2(Math.max(potenciaEstimada, mayor, dos, tres));
+            return { todos, carga: round2(carga), ilum: round2(ilum), numEquipos: todos.length, factor, potArtefactosFactor, potenciaEstimada, mayor: round2(mayor), dos: round2(dos), tres: round2(tres), potenciaMinima };
+        }
+
+        function recalcAndRender(){ const s = computeStats(); el.potIluminacion.textContent = s.ilum.toFixed(2)+' kW'; el.cargaArtefactos.textContent = s.carga.toFixed(2)+' kW'; el.numArtefactos.textContent = s.numEquipos; el.factorSim.textContent = (s.factor*100).toFixed(0)+'%'; el.potArtefactosFactor.textContent = s.potArtefactosFactor.toFixed(2)+' kW'; el.potenciaEstimada.textContent = s.potenciaEstimada.toFixed(2)+' kW'; el.mayorEquipo.textContent = s.mayor.toFixed(2)+' kW'; el.dosMayores.textContent = s.dos.toFixed(2)+' kW'; el.tresMayores.textContent = s.tres.toFixed(2)+' kW'; el.potenciaFinal.textContent = s.potenciaMinima.toFixed(2)+' kW'; }
+
+        function buildExportRows(){ const stats = computeStats(); const rows=[]; let seq=1; const factorGlobal = stats.factor; data.forEach((d,idx)=>{ const cant = counts[idx]||0; if(!cant) return; const potencia = parseFloat(d.potencia_kw)||0; const isLamp = (d.categoria||'').toLowerCase().includes('ilumin'); const E = round2(potencia*cant); const F = isLamp?1.0:factorGlobal; const G = round2(E*F); rows.push([seq, niceName(d.artefacto||d.nombre_archivo), potencia, cant, E, F, G]); seq++; }); return rows; }
+
+        function showPreviewAndConfirm(){ const rows = buildExportRows(); if(!rows.length){ alert('No hay artefactos seleccionados.'); return; } const container = el.previewContainer(); container.innerHTML=''; const table=document.createElement('table'); table.style.width='100%'; table.style.borderCollapse='collapse'; table.innerHTML='<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">#</th><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">Descripcion</th><th style="padding:6px;border-bottom:1px solid #eee">Pot kW</th><th style="padding:6px;border-bottom:1px solid #eee">Cant</th><th style="padding:6px;border-bottom:1px solid #eee">E</th><th style="padding:6px;border-bottom:1px solid #eee">F</th><th style="padding:6px;border-bottom:1px solid #eee">G</th></tr></thead>'; const tbody=document.createElement('tbody'); rows.slice(0,20).forEach(r=>{ const tr=document.createElement('tr'); r.forEach((c,i)=>{ const td=document.createElement('td'); td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; td.style.fontSize='13px'; td.style.textAlign=(i<=1)?'left':'right'; td.textContent = (typeof c==='number')?c.toFixed(2):c; tr.appendChild(td); }); tbody.appendChild(tr); }); table.appendChild(tbody); container.appendChild(table); el.preview().style.display='block'; }
+
+        async function generateXLSXFromTemplate(){ const rows = buildExportRows(); if(!rows.length){ alert('No hay artefactos seleccionados.'); return; } let resp; try{ resp = await fetch('template.xlsx'); if(!resp.ok) throw new Error('status '+resp.status); }catch(err){ alert('Error cargando template.xlsx: '+err.message); return; } const ab = await resp.arrayBuffer(); const wb = XLSX.read(new Uint8Array(ab), {type:'array'}); const sheetName = wb.SheetNames[0] || 'Sheet1'; const ws = wb.Sheets[sheetName]; const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true}); while(aoa.length < 30) aoa.push([]); const insertIndex = 17; aoa.splice(insertIndex, 6, ...rows.map(r=>r.map(v=>v))); let sumG = rows.reduce((s,r)=> s + (parseFloat(r[6])||0), 0); sumG = round2(sumG); const sumRowIndex = insertIndex + rows.length; aoa[sumRowIndex] = aoa[sumRowIndex]||[]; aoa[sumRowIndex][6] = sumG; const potenciaMin = computeStats().potenciaMinima; aoa[sumRowIndex+2] = aoa[sumRowIndex+2]||[]; aoa[sumRowIndex+2][6] = potenciaMin; wb.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(aoa); XLSX.writeFile(wb, 'cuadro_cargas.xlsx'); el.preview().style.display='none'; }
+
+        el.btnReset().addEventListener('click', ()=>{ for(let i=0;i<counts.length;i++) counts[i]=0; document.querySelectorAll('.badge').forEach(b=>b.textContent='0'); recalcAndRender(); });
+        el.btnExport().addEventListener('click', showPreviewAndConfirm);
+        el.btnCancel().addEventListener('click', ()=> el.preview().style.display='none');
+        el.btnConfirm().addEventListener('click', generateXLSXFromTemplate);
+
+        loadData();
+    </script>
+</body>
+</html>
