@@ -100,11 +100,29 @@
                 const grid = document.createElement('div'); grid.className='artefactos-grid';
                 items.forEach(it=>{
                     const card = document.createElement('div'); card.className='artefacto-card'; card.dataset.index = it._idx;
-                    const img = document.createElement('img'); img.src = 'img/'+it.nombre_archivo; img.alt = it.artefacto || it.nombre_archivo; card.appendChild(img);
+                    // envolver la imagen en un contenedor relativo para posicionar el overlay respecto a la imagen
+                    const imgWrap = document.createElement('div'); imgWrap.className = 'image-wrap';
+                    const img = document.createElement('img'); img.src = 'img/'+it.nombre_archivo; img.alt = it.artefacto || it.nombre_archivo; imgWrap.appendChild(img);
+
+                    // Overlay de controles: dos mitades clicables (arriba:+ visible, abajo:- sutil)
+                    const overlay = document.createElement('div'); overlay.className = 'controls-overlay';
+                    const halfPlus = document.createElement('div'); halfPlus.className = 'overlay-half overlay-plus'; halfPlus.setAttribute('aria-label','Aumentar'); halfPlus.innerHTML = '<span class="overlay-sign">+</span>';
+                    const halfMinus = document.createElement('div'); halfMinus.className = 'overlay-half overlay-minus'; halfMinus.setAttribute('aria-label','Disminuir'); halfMinus.innerHTML = '<span class="overlay-sign">−</span>';
+                    overlay.appendChild(halfPlus); overlay.appendChild(halfMinus);
+                    imgWrap.appendChild(overlay);
+
+                    card.appendChild(imgWrap);
                     const name = document.createElement('div'); name.className='artefacto-nombre'; name.textContent = niceName(it.artefacto||it.nombre_archivo); card.appendChild(name);
                     const badge = document.createElement('div'); badge.className='badge'; badge.textContent='0'; card.appendChild(badge);
-                    card.addEventListener('click', ()=>{ const i=+card.dataset.index; counts[i] = (counts[i]||0)+1; badge.textContent = counts[i]; recalcAndRender(); });
-                    card.addEventListener('contextmenu', e=>{ e.preventDefault(); const i=+card.dataset.index; counts[i] = Math.max(0,(counts[i]||0)-1); badge.textContent = counts[i]; recalcAndRender(); });
+
+                    // Eventos: botones táctiles y clicks tradicionales
+                    halfPlus.addEventListener('click', e=>{ e.stopPropagation(); const i=+card.dataset.index; changeCount(i, 1, badge, halfPlus); });
+                    halfMinus.addEventListener('click', e=>{ e.stopPropagation(); const i=+card.dataset.index; changeCount(i, -1, badge, halfMinus); });
+
+                    // Mantener comportamiento de clic/contextmenu sobre la tarjeta
+                    card.addEventListener('click', ()=>{ const i=+card.dataset.index; changeCount(i, 1, badge); });
+                    card.addEventListener('contextmenu', e=>{ e.preventDefault(); const i=+card.dataset.index; changeCount(i, -1, badge); });
+
                     grid.appendChild(card);
                 });
                 catEl.appendChild(grid); container.appendChild(catEl);
@@ -112,6 +130,25 @@
         }
 
         function niceName(s){ return (s||'').toString().replace(/([A-Z])/g,' $1').trim(); }
+
+        // Centraliza actualización de cantidades y animaciones de feedback
+        function changeCount(idx, delta, badge, activeEl){
+            counts[idx] = Math.max(0, (counts[idx]||0) + delta);
+            if(badge) badge.textContent = counts[idx];
+            if(badge){
+                badge.classList.add('badge-bounce');
+                const onEnd = () => badge.classList.remove('badge-bounce');
+                badge.addEventListener('animationend', onEnd, {once:true});
+            }
+            if(activeEl){
+                activeEl.classList.add('active');
+                const rm = ()=> activeEl.classList.remove('active');
+                activeEl.addEventListener('transitionend', rm, {once:true});
+                // fallback in case transitionend doesn't fire
+                setTimeout(rm, 200);
+            }
+            recalcAndRender();
+        }
 
         function computeStats(){
             const todos = []; let carga=0, ilum=0;
