@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>⚡ Calculadora de Potencia — seleccionar por clic</h1>
+    <h1 tabindex="-1">⚡ Calculadora de Potencia — seleccionar por clic</h1>
 
         <div class="controls-top">
             <button id="resetAll" class="btn secondary">🔄 Reiniciar</button>
@@ -65,15 +65,15 @@
         const counts = [];
 
         const el = {
-            categories: () => document.getElementById('categories'),
-            preview: () => document.getElementById('exportPreview'),
-            previewContainer: () => document.getElementById('previewTableContainer'),
-            btnReset: () => document.getElementById('resetAll'),
-            btnExport: () => document.getElementById('exportSelection'),
-            btnResetBottom: () => document.getElementById('resetAllBottom'),
-            btnExportBottom: () => document.getElementById('exportSelectionBottom'),
-            btnConfirm: () => document.getElementById('confirmExport'),
-            btnCancel: () => document.getElementById('cancelExport'),
+            categories: document.getElementById('categories'),
+            preview: document.getElementById('exportPreview'),
+            previewContainer: document.getElementById('previewTableContainer'),
+            btnReset: document.getElementById('resetAll'),
+            btnExport: document.getElementById('exportSelection'),
+            btnResetBottom: document.getElementById('resetAllBottom'),
+            btnExportBottom: document.getElementById('exportSelectionBottom'),
+            btnConfirm: document.getElementById('confirmExport'),
+            btnCancel: document.getElementById('cancelExport'),
             potIluminacion: document.getElementById('potIluminacion'),
             cargaArtefactos: document.getElementById('cargaArtefactos'),
             numArtefactos: document.getElementById('numArtefactos'),
@@ -97,7 +97,7 @@
         }
 
         function renderCategories(){
-            const container = el.categories(); container.innerHTML = '';
+            const container = el.categories; container.innerHTML = '';
             const map = new Map();
             data.forEach((item, idx) => { const cat = item.categoria || 'Sin categoría'; (map.get(cat)||map.set(cat,[]).get(cat)).push({...item,_idx:idx}); });
             map.forEach((items,categoria)=>{
@@ -131,7 +131,7 @@
 
                     grid.appendChild(card);
                 });
-                catEl.appendChild(grid); container.appendChild(catEl);
+                    catEl.appendChild(grid); container.appendChild(catEl);
             });
         }
 
@@ -167,20 +167,28 @@
 
         function buildExportRows(){ const stats = computeStats(); const rows=[]; let seq=1; const factorGlobal = stats.factor; data.forEach((d,idx)=>{ const cant = counts[idx]||0; if(!cant) return; const potencia = parseFloat(d.potencia_kw)||0; const isLamp = (d.categoria||'').toLowerCase().includes('ilumin'); const E = round2(potencia*cant); const F = isLamp?1.0:factorGlobal; const G = round2(E*F); rows.push([seq, niceName(d.artefacto||d.nombre_archivo), potencia, cant, E, F, G]); seq++; }); return rows; }
 
-        function showPreviewAndConfirm(){ const rows = buildExportRows(); if(!rows.length){ alert('No hay artefactos seleccionados.'); return; } const container = el.previewContainer(); container.innerHTML=''; const table=document.createElement('table'); table.style.width='100%'; table.style.borderCollapse='collapse'; table.innerHTML='<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">#</th><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">Descripcion</th><th style="padding:6px;border-bottom:1px solid #eee">Pot kW</th><th style="padding:6px;border-bottom:1px solid #eee">Cant</th><th style="padding:6px;border-bottom:1px solid #eee">E</th><th style="padding:6px;border-bottom:1px solid #eee">F</th><th style="padding:6px;border-bottom:1px solid #eee">G</th></tr></thead>'; const tbody=document.createElement('tbody'); rows.slice(0,20).forEach(r=>{ const tr=document.createElement('tr'); r.forEach((c,i)=>{ const td=document.createElement('td'); td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; td.style.fontSize='13px'; td.style.textAlign=(i<=1)?'left':'right'; td.textContent = (typeof c==='number')?c.toFixed(2):c; tr.appendChild(td); }); tbody.appendChild(tr); }); table.appendChild(tbody); container.appendChild(table); el.preview().style.display='block'; }
+    function showPreviewAndConfirm(){ const rows = buildExportRows(); if(!rows.length){ alert('No hay artefactos seleccionados.'); return; } const container = el.previewContainer; container.innerHTML=''; const table=document.createElement('table'); table.style.width='100%'; table.style.borderCollapse='collapse'; table.innerHTML='<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">#</th><th style="text-align:left;padding:6px;border-bottom:1px solid #eee">Descripcion</th><th style="padding:6px;border-bottom:1px solid #eee">Pot kW</th><th style="padding:6px;border-bottom:1px solid #eee">Cant</th><th style="padding:6px;border-bottom:1px solid #eee">E</th><th style="padding:6px;border-bottom:1px solid #eee">F</th><th style="padding:6px;border-bottom:1px solid #eee">G</th></tr></thead>'; const tbody=document.createElement('tbody'); rows.slice(0,20).forEach(r=>{ const tr=document.createElement('tr'); r.forEach((c,i)=>{ const td=document.createElement('td'); td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; td.style.fontSize='13px'; td.style.textAlign=(i<=1)?'left':'right'; td.textContent = (typeof c==='number')?c.toFixed(2):c; tr.appendChild(td); }); tbody.appendChild(tr); }); table.appendChild(tbody); container.appendChild(table); if(el.preview) el.preview.style.display='block'; }
 
-        async function generateXLSXFromTemplate(){ const rows = buildExportRows(); if(!rows.length){ alert('No hay artefactos seleccionados.'); return; } let resp; try{ resp = await fetch('template.xlsx'); if(!resp.ok) throw new Error('status '+resp.status); }catch(err){ alert('Error cargando template.xlsx: '+err.message); return; } const ab = await resp.arrayBuffer(); const wb = XLSX.read(new Uint8Array(ab), {type:'array'}); const sheetName = wb.SheetNames[0] || 'Sheet1'; const ws = wb.Sheets[sheetName]; const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true}); while(aoa.length < 30) aoa.push([]); const insertIndex = 17; aoa.splice(insertIndex, 6, ...rows.map(r=>r.map(v=>v))); let sumG = rows.reduce((s,r)=> s + (parseFloat(r[6])||0), 0); sumG = round2(sumG); const sumRowIndex = insertIndex + rows.length; aoa[sumRowIndex] = aoa[sumRowIndex]||[]; aoa[sumRowIndex][6] = sumG; const potenciaMin = computeStats().potenciaMinima; aoa[sumRowIndex+2] = aoa[sumRowIndex+2]||[]; aoa[sumRowIndex+2][6] = potenciaMin; wb.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(aoa); XLSX.writeFile(wb, 'cuadro_cargas.xlsx'); el.preview().style.display='none'; }
+    async function generateXLSXFromTemplate(){ const rows = buildExportRows(); if(!rows.length){ alert('No hay artefactos seleccionados.'); return; } let resp; try{ resp = await fetch('template.xlsx'); if(!resp.ok) throw new Error('status '+resp.status); }catch(err){ alert('Error cargando template.xlsx: '+err.message); return; } const ab = await resp.arrayBuffer(); const wb = XLSX.read(new Uint8Array(ab), {type:'array'}); const sheetName = wb.SheetNames[0] || 'Sheet1'; const ws = wb.Sheets[sheetName]; const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true}); while(aoa.length < 30) aoa.push([]); const insertIndex = 17; aoa.splice(insertIndex, 6, ...rows.map(r=>r.map(v=>v))); let sumG = rows.reduce((s,r)=> s + (parseFloat(r[6])||0), 0); sumG = round2(sumG); const sumRowIndex = insertIndex + rows.length; aoa[sumRowIndex] = aoa[sumRowIndex]||[]; aoa[sumRowIndex][6] = sumG; const potenciaMin = computeStats().potenciaMinima; aoa[sumRowIndex+2] = aoa[sumRowIndex+2]||[]; aoa[sumRowIndex+2][6] = potenciaMin; wb.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(aoa); XLSX.writeFile(wb, 'cuadro_cargas.xlsx'); if(el.preview) el.preview.style.display='none'; }
 
     // Handlers reutilizables para botones superior e inferior
-    function resetAllHandler(){ for(let i=0;i<counts.length;i++) counts[i]=0; document.querySelectorAll('.badge').forEach(b=>b.textContent='0'); recalcAndRender(); }
+        function resetAllHandler(){
+            for(let i=0;i<counts.length;i++) counts[i]=0;
+            document.querySelectorAll('.badge').forEach(b=>b.textContent='0');
+            recalcAndRender();
+            // Llevar la vista a la parte inicial de forma instantánea (no smooth) y enfocar el encabezado
+            try{ window.scrollTo(0,0); }
+            catch(e){ /* no-op */ }
+            const _h = document.querySelector('h1'); if(_h && typeof _h.focus === 'function') _h.focus();
+        }
     function exportHandler(){ showPreviewAndConfirm(); }
 
-    if(el.btnReset()) el.btnReset().addEventListener('click', resetAllHandler);
-    if(el.btnResetBottom()) el.btnResetBottom().addEventListener('click', resetAllHandler);
-    if(el.btnExport()) el.btnExport().addEventListener('click', exportHandler);
-    if(el.btnExportBottom()) el.btnExportBottom().addEventListener('click', exportHandler);
-    if(el.btnCancel()) el.btnCancel().addEventListener('click', ()=> el.preview().style.display='none');
-    if(el.btnConfirm()) el.btnConfirm().addEventListener('click', generateXLSXFromTemplate);
+    if(el.btnReset) el.btnReset.addEventListener('click', resetAllHandler);
+    if(el.btnResetBottom) el.btnResetBottom.addEventListener('click', resetAllHandler);
+    if(el.btnExport) el.btnExport.addEventListener('click', exportHandler);
+    if(el.btnExportBottom) el.btnExportBottom.addEventListener('click', exportHandler);
+    if(el.btnCancel) el.btnCancel.addEventListener('click', ()=> { if(el.preview) el.preview.style.display='none'; });
+    if(el.btnConfirm) el.btnConfirm.addEventListener('click', generateXLSXFromTemplate);
 
         loadData();
     </script>
