@@ -176,9 +176,11 @@
             for(let i=0;i<counts.length;i++) counts[i]=0;
             document.querySelectorAll('.badge').forEach(b=>b.textContent='0');
             recalcAndRender();
+            // Ocultar y limpiar la vista previa de exportación para iniciar desde cero
+            try{ if(el.preview) el.preview.style.display = 'none'; }catch(e){/* no-op */}
+            try{ if(el.previewContainer) el.previewContainer.innerHTML = ''; }catch(e){/* no-op */}
             // Llevar la vista a la parte inicial de forma instantánea (no smooth) y enfocar el encabezado
-            try{ window.scrollTo(0,0); }
-            catch(e){ /* no-op */ }
+            try{ window.scrollTo(0,0); }catch(e){ /* no-op */ }
             const _h = document.querySelector('h1'); if(_h && typeof _h.focus === 'function') _h.focus();
         }
     function exportHandler(){
