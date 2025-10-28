@@ -13,7 +13,7 @@
         <div class="controls-top">
             <button id="resetAll" class="btn secondary">🔄 Reiniciar</button>
             <button id="exportSelection" class="btn">📥 Exportar a XLSX</button>
-            <div class="muted">Haz clic sobre un artefacto para aumentar su cantidad; clic derecho para disminuir.</div>
+            <div class="muted">Para aumentar la cantidad de aparatos, haz clic sobre el dibujo del artefacto; si quieres reducirlos, usa el control en la esquina inferior derecha.</div>
         </div>
 
         <!-- Preview de exportación -->
@@ -49,6 +49,10 @@
                     <div class="resultado-final-label">✅ POTENCIA MÍNIMA A CONTRATAR</div>
                     <div class="resultado-final-valor" id="potenciaFinal">0.00 kW</div>
                 </div>
+                <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+                    <button id="resetAllBottom" class="btn secondary">🔄 Reiniciar</button>
+                    <button id="exportSelectionBottom" class="btn">📥 Exportar a XLSX</button>
+                </div>
             </div>
         </div>
     </div>
@@ -66,6 +70,8 @@
             previewContainer: () => document.getElementById('previewTableContainer'),
             btnReset: () => document.getElementById('resetAll'),
             btnExport: () => document.getElementById('exportSelection'),
+            btnResetBottom: () => document.getElementById('resetAllBottom'),
+            btnExportBottom: () => document.getElementById('exportSelectionBottom'),
             btnConfirm: () => document.getElementById('confirmExport'),
             btnCancel: () => document.getElementById('cancelExport'),
             potIluminacion: document.getElementById('potIluminacion'),
@@ -165,10 +171,16 @@
 
         async function generateXLSXFromTemplate(){ const rows = buildExportRows(); if(!rows.length){ alert('No hay artefactos seleccionados.'); return; } let resp; try{ resp = await fetch('template.xlsx'); if(!resp.ok) throw new Error('status '+resp.status); }catch(err){ alert('Error cargando template.xlsx: '+err.message); return; } const ab = await resp.arrayBuffer(); const wb = XLSX.read(new Uint8Array(ab), {type:'array'}); const sheetName = wb.SheetNames[0] || 'Sheet1'; const ws = wb.Sheets[sheetName]; const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true}); while(aoa.length < 30) aoa.push([]); const insertIndex = 17; aoa.splice(insertIndex, 6, ...rows.map(r=>r.map(v=>v))); let sumG = rows.reduce((s,r)=> s + (parseFloat(r[6])||0), 0); sumG = round2(sumG); const sumRowIndex = insertIndex + rows.length; aoa[sumRowIndex] = aoa[sumRowIndex]||[]; aoa[sumRowIndex][6] = sumG; const potenciaMin = computeStats().potenciaMinima; aoa[sumRowIndex+2] = aoa[sumRowIndex+2]||[]; aoa[sumRowIndex+2][6] = potenciaMin; wb.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(aoa); XLSX.writeFile(wb, 'cuadro_cargas.xlsx'); el.preview().style.display='none'; }
 
-        el.btnReset().addEventListener('click', ()=>{ for(let i=0;i<counts.length;i++) counts[i]=0; document.querySelectorAll('.badge').forEach(b=>b.textContent='0'); recalcAndRender(); });
-        el.btnExport().addEventListener('click', showPreviewAndConfirm);
-        el.btnCancel().addEventListener('click', ()=> el.preview().style.display='none');
-        el.btnConfirm().addEventListener('click', generateXLSXFromTemplate);
+    // Handlers reutilizables para botones superior e inferior
+    function resetAllHandler(){ for(let i=0;i<counts.length;i++) counts[i]=0; document.querySelectorAll('.badge').forEach(b=>b.textContent='0'); recalcAndRender(); }
+    function exportHandler(){ showPreviewAndConfirm(); }
+
+    if(el.btnReset()) el.btnReset().addEventListener('click', resetAllHandler);
+    if(el.btnResetBottom()) el.btnResetBottom().addEventListener('click', resetAllHandler);
+    if(el.btnExport()) el.btnExport().addEventListener('click', exportHandler);
+    if(el.btnExportBottom()) el.btnExportBottom().addEventListener('click', exportHandler);
+    if(el.btnCancel()) el.btnCancel().addEventListener('click', ()=> el.preview().style.display='none');
+    if(el.btnConfirm()) el.btnConfirm().addEventListener('click', generateXLSXFromTemplate);
 
         loadData();
     </script>
