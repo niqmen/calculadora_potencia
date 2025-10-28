@@ -181,7 +181,12 @@
             catch(e){ /* no-op */ }
             const _h = document.querySelector('h1'); if(_h && typeof _h.focus === 'function') _h.focus();
         }
-    function exportHandler(){ showPreviewAndConfirm(); }
+    function exportHandler(){
+        // Salto instantáneo al inicio y foco en el encabezado para un "refresco" limpio
+        try{ window.scrollTo(0,0); }catch(e){ /* no-op */ }
+        const _h = document.querySelector('h1'); if(_h && typeof _h.focus === 'function') _h.focus();
+        showPreviewAndConfirm();
+    }
 
     if(el.btnReset) el.btnReset.addEventListener('click', resetAllHandler);
     if(el.btnResetBottom) el.btnResetBottom.addEventListener('click', resetAllHandler);
